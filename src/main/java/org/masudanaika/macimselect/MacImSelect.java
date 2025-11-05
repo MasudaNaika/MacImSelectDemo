@@ -1,76 +1,108 @@
 package org.masudanaika.macimselect;
 
 import com.sun.jna.Callback;
-import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.NativeLibrary;
+import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
  * MacImSelect.
- * 
+ *
  * @author masuda, Masudana Ika
  */
 public class MacImSelect {
-    
+
     private String romanId = "com.apple.keylayout.ABC";
     private String kanjiId = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese";
-    
+
     public void setRomanId(String romanId) {
         this.romanId = romanId;
     }
-    
+
     public void setKanjiId(String kanjiId) {
         this.kanjiId = kanjiId;
     }
-    
+
     public void toRomanMode() {
         selectInputSource(romanId);
     }
-    
+
     public void toKanjiMode() {
         selectInputSource(kanjiId);
     }
-    
+
     public void selectInputSource(String sourceId) {
-        Thread.ofVirtual().start(() -> {
-            selectInputSourceJnaCocoa(sourceId);
+
+        Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+            DispatchTask task = ctx -> {
+                try {
+                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                    if (context != null) {
+                        context.selectInputSource(sourceId);
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace(System.err);
+                }
+            };
+            Carbon.dispatch_sync(task);
         });
     }
-    
+
     public String getSelectedInputSourceId() {
-        Callable<String> task = () -> {
-            return getSelectedInputSourceIdJnaCocoa();
-        };
-        Future<String> f = Executors.newVirtualThreadPerTaskExecutor().submit(task);
+
+        final String[] result = {""};
+
         try {
-            return f.get(1, TimeUnit.SECONDS);
+            Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+                DispatchTask task = ctx -> {
+                    try {
+                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                        if (context != null) {
+                            result[0] = context.getSelectedInputSourceId();
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace(System.err);
+                    }
+                };
+                Carbon.dispatch_sync(task);
+            }).get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
         }
-        return "";
+
+        return result[0];
     }
-    
+
     public List<String> getInputSourceList() {
-        Callable<List<String>> task = () -> {
-            String str = getInputSourceListJnaCocoa();
-            return Arrays.asList(str.split(","));
-        };
-        Future<List<String>> f = Executors.newVirtualThreadPerTaskExecutor().submit(task);
+
+        final List<String> list = new ArrayList<>();
+
         try {
-            return f.get(1, TimeUnit.SECONDS);
+            Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+                DispatchTask task = ctx -> {
+                    try {
+                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                        if (context != null) {
+                            list.addAll(context.getInputSourceList());
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace(System.err);
+                    }
+                };
+                Carbon.dispatch_sync(task);
+            }).get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
         }
-        return List.of();
+
+        return list;
     }
 
     private interface DispatchTask extends Callback {
@@ -79,8 +111,6 @@ public class MacImSelect {
     }
 
     private static class Carbon {
-
-        private static final int kCFStringEncodingUTF8 = 0x08000100;
 
         private static final Pointer _dispatch_main_q;
 
@@ -100,180 +130,140 @@ public class MacImSelect {
 
         private static native void dispatch_sync_f(Pointer queue, Pointer context, Callback task);
 
-        private static native long objc_msgSend(Pointer theReceiver, Pointer theSelector);
+        private static native Pointer objc_msgSend(NSTextInputContext receiver, Selector selector);
 
-        private static native long objc_msgSend(Pointer theReceiver, Pointer theSelector, long arg1);
+        private static native NativeLong objc_msgSend(NSTextInputContext receiver, Selector selector, Pointer arg1, Pointer arg2);
 
-        private static native long objc_msgSend(Pointer theReceiver, Pointer theSelector, long arg1, long arg2);
+        private static native NativeLong objc_msgSend(NSArray receiver, Selector selector);
+
+        private static native Pointer objc_msgSend(NSArray receiver, Selector selector, NativeLong arg1);
+
+        private static native Pointer objc_msgSend(NSString receiver, Selector selector);
+
+        private static native Pointer objc_msgSend(NSString receiver, Selector selector, String str);
 
         private static native Pointer objc_lookUpClass(String name);
 
         private static native Pointer sel_getUid(String name);
 
-        private static native long CFStringGetLength(Pointer theString);
-
-        private static native boolean CFStringGetCString(Pointer theString, Pointer buffer, long bufferSize, int encoding);
-
-        private static native Pointer CFStringCreateWithCString(Pointer alloc, String str, int encoding);
-
-        private static String CFStringGetCString(long peer) {
-            Pointer p = new Pointer(peer);
-            long size = CFStringGetLength(p) + 1;
-            Memory mem = new Memory(size);
-            boolean ok = CFStringGetCString(p, mem, size, kCFStringEncodingUTF8);
-            return ok ? mem.getString(0) : null;
-        }
-
-        private static Pointer CFStringCreateWithCString(String str) {
-            return CFStringCreateWithCString(null, str, kCFStringEncodingUTF8);
-        }
     }
 
-    private static class Selector extends Pointer {
+    public static class NSTextInputContext extends Pointer {
 
-        private static final Selector currentInputContext = new Selector("currentInputContext");
-        private static final Selector keyboardInputSources = new Selector("keyboardInputSources");
-        private static final Selector selectedKeyboardInputSource = new Selector("selectedKeyboardInputSource");
-        private static final Selector count = new Selector("count");
-        private static final Selector objectAtIndex = new Selector("objectAtIndex:");
-        private static final Selector setValueForKey = new Selector("setValue:forKey:");
+        private static final NSTextInputContext CLASS_PTR
+                = new NSTextInputContext(Carbon.objc_lookUpClass("NSTextInputContext"));
 
-        private static final Pointer FOR_KEY_VALUE_SELECTED_KEYBOARD_INPUT_SOURCE
-                = Carbon.CFStringCreateWithCString("selectedKeyboardInputSource");
+        private static final Selector sel_currentInputContext = new Selector("currentInputContext");
+        private static final Selector sel_keyboardInputSources = new Selector("keyboardInputSources");
+        private static final Selector sel_selectedKeyboardInputSource = new Selector("selectedKeyboardInputSource");
+        private static final Selector sel_setValueForKey = new Selector("setValue:forKey:");
 
-        private Selector(String name) {
-            super(Pointer.nativeValue(Carbon.sel_getUid(name)));
-        }
-    }
+        private static final Pointer SELECTED_KEYBOARD_INPUT_SOURCE
+                = new NSString("selectedKeyboardInputSource");
 
-    private static class NSTextInputContext extends Pointer {
-
-        private static final Pointer CLASS_PTR = Carbon.objc_lookUpClass("NSTextInputContext");
-
-        private NSTextInputContext(long peer) {
-            super(peer);
+        public NSTextInputContext(Pointer ptr) {
+            super(Pointer.nativeValue(ptr));
         }
 
+        private static NSTextInputContext getCurrentInputContext() {
+            Pointer ptr = Carbon.objc_msgSend(CLASS_PTR, sel_currentInputContext);
+            return ptr != Pointer.NULL ? new NSTextInputContext(ptr) : null;
+        }
+
+        private int selectInputSource(String sourceId) {
+            Pointer arrayPtr = Carbon.objc_msgSend(this, sel_keyboardInputSources);
+            if (arrayPtr != Pointer.NULL) {
+                NSArray array = new NSArray(arrayPtr);
+                for (int i = 0, len = array.getLength(); i < len; ++i) {
+                    Pointer ptr = array.getElementPtr(i);
+                    if (ptr != Pointer.NULL) {
+                        String is = new NSString(ptr).utf8String();
+                        if (is != null && is.equals(sourceId)) {
+                            return Carbon.objc_msgSend(this, sel_setValueForKey, ptr,
+                                    SELECTED_KEYBOARD_INPUT_SOURCE).intValue();
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+
+        private String getSelectedInputSourceId() {
+            Pointer ptr = Carbon.objc_msgSend(this, sel_selectedKeyboardInputSource);
+            return ptr != Pointer.NULL ? new NSString(ptr).utf8String() : null;
+        }
+
+        private List<String> getInputSourceList() {
+            Pointer arrayPtr = Carbon.objc_msgSend(this, sel_keyboardInputSources);
+            List<String> list = new ArrayList<>();
+            if (arrayPtr != Pointer.NULL) {
+                NSArray array = new NSArray(arrayPtr);
+                for (int i = 0, len = array.getLength(); i < len; ++i) {
+                    list.add(array.getStringAt(i));
+                }
+            }
+            return list;
+        }
     }
 
     private static class NSArray extends Pointer {
 
-        private NSArray(long peer) {
-            super(peer);
+        private static final Selector sel_count = new Selector("count");
+        private static final Selector sel_objectAtIndex = new Selector("objectAtIndex:");
+
+        private NSArray(Pointer ptr) {
+            super(Pointer.nativeValue(ptr));
         }
 
         private int getLength() {
-            return (int) Carbon.objc_msgSend(this, Selector.count);
+            return Carbon.objc_msgSend(this, sel_count).intValue();
         }
 
         private String getStringAt(int index) {
-            long sptr = getPeerAt(index);
-            return sptr != 0 ? Carbon.CFStringGetCString(sptr) : null;
+            Pointer ptr = getElementPtr(index);
+            return ptr != Pointer.NULL ? new NSString(ptr).utf8String() : null;
         }
 
-        private long getPeerAt(int index) {
-            return Carbon.objc_msgSend(this, Selector.objectAtIndex, index);
+        private Pointer getElementPtr(int index) {
+            return Carbon.objc_msgSend(this, sel_objectAtIndex, new NativeLong(index));
         }
 
     }
 
-    private NSTextInputContext getCurrentInputContext() {
-        long contextPtr = Carbon.objc_msgSend(NSTextInputContext.CLASS_PTR, Selector.currentInputContext);
-        NSTextInputContext context = contextPtr != 0
-                ? new NSTextInputContext(contextPtr)
-                : null;
-        return context;
+    private static class NSString extends Pointer {
+
+        private static final NSString CLASS_PTR
+                = new NSString(Carbon.objc_lookUpClass("NSString"));
+
+        private static final Selector sel_alloc = new Selector("alloc");
+        private static final Selector sel_initWithUTF8String = new Selector("initWithUTF8String:");
+        private static final Selector sel_UTF8String = new Selector("UTF8String");
+
+        private NSString(Pointer ptr) {
+            super(Pointer.nativeValue(ptr));
+        }
+
+        private NSString(String str) {
+            this(createPointer(str));
+        }
+
+        private String utf8String() {
+            Pointer ptr = Carbon.objc_msgSend(this, sel_UTF8String);
+            return ptr.getString(0, "UTF-8");
+        }
+
+        private static Pointer createPointer(String str) {
+            NSString nsString = new NSString(Carbon.objc_msgSend(CLASS_PTR, sel_alloc));
+            return Carbon.objc_msgSend(nsString, sel_initWithUTF8String, str);
+        }
+
     }
 
-    private int selectInputSourceJnaCocoa(String sourceId) {
+    private static class Selector extends Pointer {
 
-        final int[] result = {1};
-
-        DispatchTask task = ctx -> {
-            try {
-                NSTextInputContext context = getCurrentInputContext();
-                if (context == null) {
-                    return;
-                }
-                long arrayPtr = Carbon.objc_msgSend(context, Selector.keyboardInputSources);
-                if (arrayPtr != 0) {
-                    NSArray array = new NSArray(arrayPtr);
-                    for (int i = 0, len = array.getLength(); i < len; ++i) {
-                        long sptr = array.getPeerAt(i);
-                        if (sptr != 0) {
-                            String is = Carbon.CFStringGetCString(sptr);
-                            if (is != null && is.equals(sourceId)) {
-                                result[0] = (int) Carbon.objc_msgSend(context, Selector.setValueForKey, sptr,
-                                        Pointer.nativeValue(Selector.FOR_KEY_VALUE_SELECTED_KEYBOARD_INPUT_SOURCE));
-                                break;
-                            }
-                        }
-                    }
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace(System.err);
-            }
-        };
-
-        Carbon.dispatch_sync(task);
-
-        return result[0];
-    }
-
-    private String getInputSourceListJnaCocoa() {
-
-        final String[] result = {""};
-
-        DispatchTask task = ctx -> {
-            try {
-                NSTextInputContext context = getCurrentInputContext();
-                if (context == null) {
-                    return;
-                }
-                long arrayPtr = Carbon.objc_msgSend(context, Selector.keyboardInputSources);
-                if (arrayPtr != 0) {
-                    NSArray array = new NSArray(arrayPtr);
-                    StringBuilder sb = new StringBuilder();
-                    for (int i = 0, len = array.getLength(); i < len; ++i) {
-                        if (i > 0) {
-                            sb.append(",");
-                        }
-                        sb.append(array.getStringAt(i));
-                    }
-                    result[0] = sb.toString();
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace(System.err);
-            }
-        };
-
-        Carbon.dispatch_sync(task);
-
-        return result[0];
-    }
-
-    private String getSelectedInputSourceIdJnaCocoa() {
-
-        final String[] result = {""};
-
-        DispatchTask task = ctx -> {
-            try {
-                NSTextInputContext context = getCurrentInputContext();
-                if (context == null) {
-                    return;
-                }
-                long selected = Carbon.objc_msgSend(context, Selector.selectedKeyboardInputSource);
-                if (selected != 0) {
-                    result[0] = Carbon.CFStringGetCString(selected);
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace(System.err);
-            }
-        };
-
-        Carbon.dispatch_sync(task);
-
-        return result[0];
+        private Selector(String name) {
+            super(Pointer.nativeValue(Carbon.sel_getUid(name)));
+        }
     }
 
 }
