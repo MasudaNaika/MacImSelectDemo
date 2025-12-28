@@ -17,7 +17,7 @@ import java.util.concurrent.TimeoutException;
  *
  * @author masuda, Masudana Ika
  */
-public class MacImSelect {
+public class MacImSelectJNA {
 
     private String romanId = "com.apple.keylayout.ABC";
     private String kanjiId = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese";

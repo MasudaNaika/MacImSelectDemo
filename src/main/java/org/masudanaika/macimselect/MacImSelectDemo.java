@@ -24,7 +24,8 @@ public class MacImSelectDemo {
 
     private void start() {
 
-        MacImSelect imSelect = new MacImSelect();
+//        MacImSelect imSelect = new MacImSelect();
+        MacImSelectFFM imSelect = new MacImSelectFFM();
 
         JFrame frame = new JFrame("MacImSelect Demo, (C)Masudana Ika");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
