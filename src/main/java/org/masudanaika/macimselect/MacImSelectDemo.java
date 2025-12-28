@@ -24,7 +24,7 @@ public class MacImSelectDemo {
 
     private void start() {
 
-//        MacImSelect imSelect = new MacImSelect();
+//        MacImSelectJNA imSelect = new MacImSelectJNA();
         MacImSelectFFM imSelect = new MacImSelectFFM();
 
         JFrame frame = new JFrame("MacImSelect Demo, (C)Masudana Ika");
