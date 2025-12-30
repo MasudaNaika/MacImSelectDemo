@@ -256,52 +256,56 @@ public class MacImSelectFFM {
         public static NSTextInputContext getCurrentInputContext() {
             try {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(CLASS_PTR, sel_currentInputContext);
-                return new NSTextInputContext(ms);
-            } catch (Throwable th) {
-                th.printStackTrace(System.err);
-                return null;
-            }
-        }
-
-        public int selectInputSource(String sourceId) {
-            try {
-                MemorySegment arrayPtr = Carbon.mseg_objc_msgSend(memorySegment, sel_keyboardInputSources);
-                if (arrayPtr != null) {
-                    NSArray array = new NSArray(arrayPtr);
-                    for (int i = 0, len = array.getLength(); i < len; ++i) {
-                        MemorySegment ptr = array.getElementPtr(i);
-                        if (ptr != null) {
-                            String is = new NSString(ptr).utf8String();
-                            if (is != null && is.equals(sourceId)) {
-                                return (int) Carbon.long_objc_msgSend(memorySegment, sel_setValueForKey,
-                                        ptr, SELECTED_KEYBOARD_INPUT_SOURCE);
-                            }
-                        }
-                    }
+                if (ms != MemorySegment.NULL) {
+                    return new NSTextInputContext(ms);
                 }
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
             }
+            return null;
+        }
 
+        public int selectInputSource(String sourceId) {
+            if (sourceId != null && !sourceId.isEmpty()) {
+                try {
+                    MemorySegment arrayPtr = Carbon.mseg_objc_msgSend(memorySegment, sel_keyboardInputSources);
+                    if (arrayPtr != MemorySegment.NULL) {
+                        NSArray array = new NSArray(arrayPtr);
+                        for (int i = 0, len = array.getLength(); i < len; ++i) {
+                            MemorySegment ptr = array.getElementPtr(i);
+                            if (ptr != MemorySegment.NULL) {
+                                String is = new NSString(ptr).utf8String();
+                                if (sourceId.equals(is)) {
+                                    return (int) Carbon.long_objc_msgSend(memorySegment, sel_setValueForKey,
+                                            ptr, SELECTED_KEYBOARD_INPUT_SOURCE);
+                                }
+                            }
+                        }
+                    }
+                } catch (Throwable th) {
+                    th.printStackTrace(System.err);
+                }
+            }
             return 0;
-
         }
 
         public String getSelectedInputSourceId() {
             try {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(memorySegment, sel_selectedKeyboardInputSource);
-                return ms != null ? new NSString(ms).utf8String() : null;
+                if (ms != MemorySegment.NULL) {
+                    return new NSString(ms).utf8String();
+                }
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
-                return null;
             }
+            return null;
         }
 
         public List<String> getInputSourceList() {
             List<String> list = new ArrayList<>();
             try {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(memorySegment, sel_keyboardInputSources);
-                if (ms != null) {
+                if (ms != MemorySegment.NULL) {
                     NSArray array = new NSArray(ms);
                     for (int i = 0, len = array.getLength(); i < len; ++i) {
                         list.add(array.getStringAt(i));
@@ -332,13 +336,13 @@ public class MacImSelectFFM {
                 return (int) Carbon.long_objc_msgSend(memorySegment, sel_count);
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
-                return -1;
             }
+            return -1;
         }
 
         public String getStringAt(int index) {
             MemorySegment ms = getElementPtr(index);
-            return ms != null ? new NSString(ms).utf8String() : null;
+            return ms != MemorySegment.NULL ? new NSString(ms).utf8String() : null;
         }
 
         public MemorySegment getElementPtr(int index) {
@@ -346,8 +350,8 @@ public class MacImSelectFFM {
                 return Carbon.mseg_objc_msgSend(memorySegment, sel_objectAtIndex, index);
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
-                return null;
             }
+            return null;
         }
 
     }
@@ -380,8 +384,8 @@ public class MacImSelectFFM {
                 return strPtr.getString(0, StandardCharsets.UTF_8);
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
-                return null;
             }
+            return null;
         }
 
         private static MemorySegment createPointer(String str) {
@@ -390,8 +394,8 @@ public class MacImSelectFFM {
                 return Carbon.mseg_objc_msgSend(ms, sel_initWithUTF8String, arena.allocateFrom(str));
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
-                return null;
             }
+            return null;
         }
 
         public MemorySegment getMemorySegment() {
