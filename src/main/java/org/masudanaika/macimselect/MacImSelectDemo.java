@@ -5,9 +5,11 @@ import java.awt.FlowLayout;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.swing.JButton;
+import javax.swing.JCheckBox;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextArea;
+import javax.swing.JToggleButton;
 import javax.swing.SwingUtilities;
 
 /**
@@ -24,8 +26,8 @@ public class MacImSelectDemo {
 
     private void start() {
 
-//        MacImSelectJNA imSelect = new MacImSelectJNA();
-        MacImSelectFFM imSelect = new MacImSelectFFM();
+        MacImSelectJNA imSelectJNA = new MacImSelectJNA();
+        MacImSelectFFM imSelectFFM = new MacImSelectFFM();
 
         JFrame frame = new JFrame("MacImSelect Demo, (C)Masudana Ika");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -37,31 +39,58 @@ public class MacImSelectDemo {
         panel.add(ta, BorderLayout.CENTER);
         JPanel btnPanel = new JPanel();
         btnPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+        JToggleButton tgl = new JToggleButton("JNA");
+        tgl.addActionListener(ae -> {
+            if (tgl.isSelected()) {
+                tgl.setText("FFM");
+            } else {
+                tgl.setText("JNA");
+            }
+        });
         JButton btn1 = new JButton("英数字");
         btnPanel.add(btn1);
         btn1.addActionListener(ae -> {
-            imSelect.toRomanMode();
+            if (tgl.isSelected()) {
+                imSelectFFM.toRomanMode();
+            } else {
+                imSelectJNA.toRomanMode();
+            }
             ta.setText("Roman mode.\n");
         });
         JButton btn2 = new JButton("漢字");
         btnPanel.add(btn2);
         btn2.addActionListener(ae -> {
-            imSelect.toKanjiMode();
+            if (tgl.isSelected()) {
+                imSelectFFM.toKanjiMode();
+            } else {
+                imSelectJNA.toKanjiMode();
+            }
             ta.setText("Kanji mode.\n");
         });
         JButton btn3 = new JButton("現在");
         btnPanel.add(btn3);
         btn3.addActionListener(ae -> {
-            String sourceId = imSelect.getSelectedInputSourceId();
+            String sourceId;
+            if (tgl.isSelected()) {
+                sourceId = imSelectFFM.getSelectedInputSourceId();
+            } else {
+                sourceId = imSelectJNA.getSelectedInputSourceId();
+            }
             ta.setText(sourceId + "\n");
         });
         JButton btn4 = new JButton("リスト");
         btnPanel.add(btn4);
         btn4.addActionListener(ae -> {
-            List<String> list = imSelect.getInputSourceList();
+            List<String> list;
+            if (tgl.isSelected()) {
+                list = imSelectFFM.getInputSourceList();
+            } else {
+                list = imSelectJNA.getInputSourceList();
+            }
             String str = list.stream().collect(Collectors.joining("\n"));
             ta.setText(str);
         });
+        btnPanel.add(tgl);
         panel.add(btnPanel, BorderLayout.SOUTH);
         frame.pack();
         frame.setLocationRelativeTo(null);

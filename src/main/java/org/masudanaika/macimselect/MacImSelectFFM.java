@@ -364,6 +364,8 @@ public class MacImSelectFFM {
                 = Carbon.getSelector("alloc");
         private static final MemorySegment sel_initWithUTF8String
                 = Carbon.getSelector("initWithUTF8String:");
+//        private static final MemorySegment sel_stringWithUTF8String
+//                = Carbon.getSelector("stringWithUTF8String:");
         private static final MemorySegment sel_UTF8String
                 = Carbon.getSelector("UTF8String");
 
@@ -392,6 +394,7 @@ public class MacImSelectFFM {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(CLASS_PTR, sel_alloc);
                 return Carbon.mseg_objc_msgSend(ms, sel_initWithUTF8String, arena.allocateFrom(str));
+//                return Carbon.mseg_objc_msgSend(CLASS_PTR, sel_stringWithUTF8String, arena.allocateFrom(str));
             } catch (Throwable th) {
                 th.printStackTrace(System.err);
             }

@@ -237,6 +237,7 @@ public class MacImSelectJNA {
 
         private static final Selector sel_alloc = new Selector("alloc");
         private static final Selector sel_initWithUTF8String = new Selector("initWithUTF8String:");
+//        private static final Selector sel_stringWithUTF8String = new Selector("stringWithUTF8String:");
         private static final Selector sel_UTF8String = new Selector("UTF8String");
 
         private NSString(Pointer ptr) {
@@ -255,6 +256,7 @@ public class MacImSelectJNA {
         private static Pointer createPointer(String str) {
             NSString nsString = new NSString(Carbon.objc_msgSend(CLASS_PTR, sel_alloc));
             return Carbon.objc_msgSend(nsString, sel_initWithUTF8String, str);
+//            return Carbon.objc_msgSend(CLASS_PTR, sel_stringWithUTF8String, str);
         }
 
     }
