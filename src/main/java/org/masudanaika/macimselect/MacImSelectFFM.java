@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -26,6 +27,7 @@ public class MacImSelectFFM {
 
     private String romanId = "com.apple.keylayout.ABC";
     private String kanjiId = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese";
+    private ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor();
 
     public void setRomanId(String romanId) {
         this.romanId = romanId;
@@ -45,7 +47,7 @@ public class MacImSelectFFM {
 
     public void selectInputSource(String sourceId) {
 
-        Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+        exec.submit(() -> {
             Runnable task = () -> {
                 try {
                     NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
@@ -65,7 +67,7 @@ public class MacImSelectFFM {
         final String[] result = {""};
 
         try {
-            Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+            exec.submit(() -> {
                 Runnable task = () -> {
                     try {
                         NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
@@ -90,7 +92,7 @@ public class MacImSelectFFM {
         final List<String> list = new ArrayList<>();
 
         try {
-            Executors.newVirtualThreadPerTaskExecutor().submit(() -> {
+            exec.submit(() -> {
                 Runnable task = () -> {
                     try {
                         NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
