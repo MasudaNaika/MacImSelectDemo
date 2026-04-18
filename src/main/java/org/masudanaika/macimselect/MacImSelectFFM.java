@@ -46,21 +46,20 @@ public class MacImSelectFFM {
 
     public void selectInputSource(String sourceId) {
 
-        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
-            Runnable task = () -> {
-                Carbon.dispatch_sync(() -> {
-                    try {
-                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                        if (context != null) {
-                            context.selectInputSource(sourceId);
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace(System.err);
+        Runnable task = () -> {
+            Carbon.dispatch_sync(() -> {
+                try {
+                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                    if (context != null) {
+                        context.selectInputSource(sourceId);
                     }
-                });
-            };
-            exec.submit(task);
+                } catch (Exception ex) {
+                    ex.printStackTrace(System.err);
+                }
+            });
         };
+
+        Thread.ofVirtual().factory().newThread(task).start();
     }
 
     public String getSelectedInputSourceId() {

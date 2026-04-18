@@ -41,22 +41,22 @@ public class MacImSelectJNA {
 
     public void selectInputSource(String sourceId) {
 
-        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
-            Runnable r = () -> {
-                DispatchTask task = ctx -> {
-                    try {
-                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                        if (context != null) {
-                            context.selectInputSource(sourceId);
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace(System.err);
+        Runnable r = () -> {
+            DispatchTask task = ctx -> {
+                try {
+                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                    if (context != null) {
+                        context.selectInputSource(sourceId);
                     }
-                };
-                Carbon.dispatch_sync(task);
+                } catch (Exception ex) {
+                    ex.printStackTrace(System.err);
+                }
             };
-            exec.submit(r);
-        }
+            Carbon.dispatch_sync(task);
+        };
+
+        Thread.ofVirtual().factory().newThread(r).start();
+
     }
 
     public String getSelectedInputSourceId() {
