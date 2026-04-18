@@ -12,9 +12,8 @@ import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -58,58 +57,61 @@ public class MacImSelectFFM {
                 }
             });
         };
-
-        Thread.ofVirtual().factory().newThread(task).start();
+        Thread.startVirtualThread(task);
     }
 
     public String getSelectedInputSourceId() {
 
-        final String[] result = {""};
-
-        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
-            Runnable task = () -> {
-                Carbon.dispatch_sync(() -> {
-                    try {
-                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                        if (context != null) {
-                            result[0] = context.getSelectedInputSourceId();
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace(System.err);
+        CompletableFuture<String> future = new CompletableFuture<>();
+        Runnable task = () -> {
+            Carbon.dispatch_sync(() -> {
+                String srcId = "";
+                try {
+                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                    if (context != null) {
+                        srcId = context.getSelectedInputSourceId();
                     }
-                });
-            };
-            exec.submit(task).get(1, TimeUnit.SECONDS);
+                } catch (Exception ex) {
+                    ex.printStackTrace(System.err);
+                }
+                future.complete(srcId);
+            });
+        };
+        Thread.startVirtualThread(task);
+
+        try {
+            return future.get(2, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
+            return "";
         }
-
-        return result[0];
     }
 
     public List<String> getInputSourceList() {
 
-        final List<String> list = new ArrayList<>();
-
-        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
-            Runnable task = () -> {
-                Carbon.dispatch_sync(() -> {
-                    try {
-                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                        if (context != null) {
-                            list.addAll(context.getInputSourceList());
-                        }
-                    } catch (Exception ex) {
-                        ex.printStackTrace(System.err);
+        CompletableFuture<List<String>> future = new CompletableFuture<>();
+        Runnable task = () -> {
+            Carbon.dispatch_sync(() -> {
+                List<String> list = List.of();
+                try {
+                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                    if (context != null) {
+                        list = context.getInputSourceList();
                     }
-                });
-            };
-            exec.submit(task).get(1, TimeUnit.SECONDS);
+                } catch (Exception ex) {
+                    ex.printStackTrace(System.err);
+                }
+                future.complete(list);
+            });
+        };
+        Thread.startVirtualThread(task);
+
+        try {
+            return future.get(2, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
+            return List.of();
         }
-
-        return list;
     }
 
     public static class Carbon {
