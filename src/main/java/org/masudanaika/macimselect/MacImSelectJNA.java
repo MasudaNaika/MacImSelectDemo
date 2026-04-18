@@ -22,7 +22,6 @@ public class MacImSelectJNA {
 
     private String romanId = "com.apple.keylayout.ABC";
     private String kanjiId = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese";
-    private ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor();
 
     public void setRomanId(String romanId) {
         this.romanId = romanId;
@@ -42,27 +41,30 @@ public class MacImSelectJNA {
 
     public void selectInputSource(String sourceId) {
 
-        exec.submit(() -> {
-            DispatchTask task = ctx -> {
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        context.selectInputSource(sourceId);
+        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            Runnable r = () -> {
+                DispatchTask task = ctx -> {
+                    try {
+                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                        if (context != null) {
+                            context.selectInputSource(sourceId);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace(System.err);
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
-                }
+                };
+                Carbon.dispatch_sync(task);
             };
-            Carbon.dispatch_sync(task);
-        });
+            exec.submit(r);
+        }
     }
 
     public String getSelectedInputSourceId() {
 
         final String[] result = {""};
 
-        try {
-            exec.submit(() -> {
+        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            Runnable r = () -> {
                 DispatchTask task = ctx -> {
                     try {
                         NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
@@ -74,7 +76,8 @@ public class MacImSelectJNA {
                     }
                 };
                 Carbon.dispatch_sync(task);
-            }).get(1, TimeUnit.SECONDS);
+            };
+            exec.submit(r).get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
         }
@@ -86,8 +89,8 @@ public class MacImSelectJNA {
 
         final List<String> list = new ArrayList<>();
 
-        try {
-            exec.submit(() -> {
+        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            Runnable r = () -> {
                 DispatchTask task = ctx -> {
                     try {
                         NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
@@ -99,7 +102,8 @@ public class MacImSelectJNA {
                     }
                 };
                 Carbon.dispatch_sync(task);
-            }).get(1, TimeUnit.SECONDS);
+            };
+            exec.submit(r).get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
         }

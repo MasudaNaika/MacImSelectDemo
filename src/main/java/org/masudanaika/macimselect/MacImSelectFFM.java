@@ -27,7 +27,6 @@ public class MacImSelectFFM {
 
     private String romanId = "com.apple.keylayout.ABC";
     private String kanjiId = "com.apple.inputmethod.Kotoeri.RomajiTyping.Japanese";
-    private ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor();
 
     public void setRomanId(String romanId) {
         this.romanId = romanId;
@@ -47,28 +46,30 @@ public class MacImSelectFFM {
 
     public void selectInputSource(String sourceId) {
 
-        exec.submit(() -> {
+        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
             Runnable task = () -> {
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        context.selectInputSource(sourceId);
+                Carbon.dispatch_sync(() -> {
+                    try {
+                        NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                        if (context != null) {
+                            context.selectInputSource(sourceId);
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace(System.err);
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
-                }
+                });
             };
-            Carbon.dispatch_sync(task);
-        });
+            exec.submit(task);
+        };
     }
 
     public String getSelectedInputSourceId() {
 
         final String[] result = {""};
 
-        try {
-            exec.submit(() -> {
-                Runnable task = () -> {
+        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            Runnable task = () -> {
+                Carbon.dispatch_sync(() -> {
                     try {
                         NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
                         if (context != null) {
@@ -77,9 +78,9 @@ public class MacImSelectFFM {
                     } catch (Exception ex) {
                         ex.printStackTrace(System.err);
                     }
-                };
-                Carbon.dispatch_sync(task);
-            }).get(1, TimeUnit.SECONDS);
+                });
+            };
+            exec.submit(task).get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
         }
@@ -91,9 +92,9 @@ public class MacImSelectFFM {
 
         final List<String> list = new ArrayList<>();
 
-        try {
-            exec.submit(() -> {
-                Runnable task = () -> {
+        try (ExecutorService exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            Runnable task = () -> {
+                Carbon.dispatch_sync(() -> {
                     try {
                         NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
                         if (context != null) {
@@ -102,9 +103,9 @@ public class MacImSelectFFM {
                     } catch (Exception ex) {
                         ex.printStackTrace(System.err);
                     }
-                };
-                Carbon.dispatch_sync(task);
-            }).get(1, TimeUnit.SECONDS);
+                });
+            };
+            exec.submit(task).get(1, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
         }
