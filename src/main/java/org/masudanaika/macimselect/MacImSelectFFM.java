@@ -36,11 +36,15 @@ public class MacImSelectFFM {
     }
 
     public void toRomanMode() {
-        selectInputSource(romanId);
+        if (kanjiId != null && !kanjiId.isEmpty()) {
+            selectInputSource(romanId);
+        }
     }
 
     public void toKanjiMode() {
-        selectInputSource(kanjiId);
+        if (romanId != null && !romanId.isEmpty()) {
+            selectInputSource(kanjiId);
+        }
     }
 
     public void selectInputSource(String sourceId) {
@@ -50,7 +54,10 @@ public class MacImSelectFFM {
                 try {
                     NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
                     if (context != null) {
-                        context.selectInputSource(sourceId);
+                        String currId = context.getSelectedInputSourceId();
+                        if (!sourceId.equals(currId)) {
+                            context.selectInputSource(sourceId);
+                        }
                     }
                 } catch (Exception ex) {
                     ex.printStackTrace(System.err);
