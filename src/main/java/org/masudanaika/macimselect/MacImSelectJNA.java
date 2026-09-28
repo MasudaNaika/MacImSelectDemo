@@ -7,8 +7,8 @@ import com.sun.jna.NativeLong;
 import com.sun.jna.Pointer;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -31,60 +31,54 @@ public class MacImSelectJNA {
     }
 
     public void toRomanMode() {
-        if (kanjiId != null && !kanjiId.isEmpty()) {
+        if (romanId != null && !romanId.isEmpty()) {
             selectInputSource(romanId);
         }
     }
 
     public void toKanjiMode() {
-        if (romanId != null && !romanId.isEmpty()) {
+        if (kanjiId != null && !kanjiId.isEmpty()) {
             selectInputSource(kanjiId);
         }
     }
 
     public void selectInputSource(String sourceId) {
 
-        Runnable r = () -> {
-            DispatchTask task = ctx -> {
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        String currId = context.getSelectedInputSourceId();
-                        if (!sourceId.equals(currId)) {
-                            context.selectInputSource(sourceId);
-                        }
+        DispatchTask task = ctx -> {
+            try {
+                NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                if (context != null) {
+                    String currId = context.getSelectedInputSourceId();
+                    if (!sourceId.equals(currId)) {
+                        context.selectInputSource(sourceId);
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
                 }
-            };
-            Carbon.dispatch_sync(task);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
         };
-        Thread.startVirtualThread(r);
+        Thread.startVirtualThread(() -> Carbon.dispatch_sync(task));
     }
 
     public String getSelectedInputSourceId() {
 
-        CompletableFuture<String> future = new CompletableFuture<>();
-        Runnable r = () -> {
-            DispatchTask task = ctx -> {
-                String srcId = "";
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        srcId = context.getSelectedInputSourceId();
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
+        FutureTask<String> futureTask = new FutureTask<>(() -> {
+            String srcId = "";
+            try {
+                NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                if (context != null) {
+                    srcId = context.getSelectedInputSourceId();
                 }
-                future.complete(srcId);
-            };
-            Carbon.dispatch_sync(task);
-        };
-        Thread.startVirtualThread(r);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            return srcId;
+        });
+        DispatchTask task = ctx -> futureTask.run();
+        Thread.startVirtualThread(() -> Carbon.dispatch_sync(task));
 
         try {
-            return future.get(2, TimeUnit.SECONDS);
+            return futureTask.get(2, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
             return "";
@@ -93,26 +87,23 @@ public class MacImSelectJNA {
 
     public List<String> getInputSourceList() {
 
-        CompletableFuture<List<String>> future = new CompletableFuture<>();
-        Runnable r = () -> {
-            DispatchTask task = ctx -> {
-                List<String> list = List.of();
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        list = context.getInputSourceList();
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
+        FutureTask<List<String>> futureTask = new FutureTask<>(() -> {
+            List<String> list = List.of();
+            try {
+                NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                if (context != null) {
+                    list = context.getInputSourceList();
                 }
-                future.complete(list);
-            };
-            Carbon.dispatch_sync(task);
-        };
-        Thread.startVirtualThread(r);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            return list;
+        });
+        DispatchTask task = ctx -> futureTask.run();
+        Thread.startVirtualThread(() -> Carbon.dispatch_sync(task));
 
         try {
-            return future.get(2, TimeUnit.SECONDS);
+            return futureTask.get(2, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
             return List.of();

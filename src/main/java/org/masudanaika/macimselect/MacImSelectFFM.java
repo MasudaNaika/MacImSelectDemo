@@ -12,8 +12,8 @@ import java.lang.invoke.MethodType;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -36,13 +36,13 @@ public class MacImSelectFFM {
     }
 
     public void toRomanMode() {
-        if (kanjiId != null && !kanjiId.isEmpty()) {
+        if (romanId != null && !romanId.isEmpty()) {
             selectInputSource(romanId);
         }
     }
 
     public void toKanjiMode() {
-        if (romanId != null && !romanId.isEmpty()) {
+        if (kanjiId != null && !kanjiId.isEmpty()) {
             selectInputSource(kanjiId);
         }
     }
@@ -50,44 +50,40 @@ public class MacImSelectFFM {
     public void selectInputSource(String sourceId) {
 
         Runnable task = () -> {
-            Carbon.dispatch_sync(() -> {
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        String currId = context.getSelectedInputSourceId();
-                        if (!sourceId.equals(currId)) {
-                            context.selectInputSource(sourceId);
-                        }
+            try {
+                NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                if (context != null) {
+                    String currId = context.getSelectedInputSourceId();
+                    if (!sourceId.equals(currId)) {
+                        context.selectInputSource(sourceId);
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
                 }
-            });
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
         };
-        Thread.startVirtualThread(task);
+        Thread.startVirtualThread(() -> Carbon.dispatch_sync(task));
     }
 
     public String getSelectedInputSourceId() {
 
-        CompletableFuture<String> future = new CompletableFuture<>();
-        Runnable task = () -> {
-            Carbon.dispatch_sync(() -> {
-                String srcId = "";
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        srcId = context.getSelectedInputSourceId();
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
+        FutureTask<String> futureTask = new FutureTask<>(() -> {
+            String srcId = "";
+            try {
+                NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                if (context != null) {
+                    srcId = context.getSelectedInputSourceId();
                 }
-                future.complete(srcId);
-            });
-        };
-        Thread.startVirtualThread(task);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            return srcId;
+
+        });
+        Thread.startVirtualThread(() -> Carbon.dispatch_sync(futureTask));
 
         try {
-            return future.get(2, TimeUnit.SECONDS);
+            return futureTask.get(2, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
             return "";
@@ -96,25 +92,22 @@ public class MacImSelectFFM {
 
     public List<String> getInputSourceList() {
 
-        CompletableFuture<List<String>> future = new CompletableFuture<>();
-        Runnable task = () -> {
-            Carbon.dispatch_sync(() -> {
-                List<String> list = List.of();
-                try {
-                    NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
-                    if (context != null) {
-                        list = context.getInputSourceList();
-                    }
-                } catch (Exception ex) {
-                    ex.printStackTrace(System.err);
+        FutureTask<List<String>> futureTask = new FutureTask<>(() -> {
+            List<String> list = List.of();
+            try {
+                NSTextInputContext context = NSTextInputContext.getCurrentInputContext();
+                if (context != null) {
+                    list = context.getInputSourceList();
                 }
-                future.complete(list);
-            });
-        };
-        Thread.startVirtualThread(task);
+            } catch (Exception ex) {
+                ex.printStackTrace(System.err);
+            }
+            return list;
+        });
+        Thread.startVirtualThread(() -> Carbon.dispatch_sync(futureTask));
 
         try {
-            return future.get(2, TimeUnit.SECONDS);
+            return futureTask.get(2, TimeUnit.SECONDS);
         } catch (InterruptedException | ExecutionException | TimeoutException ex) {
             ex.printStackTrace(System.err);
             return List.of();
@@ -267,7 +260,7 @@ public class MacImSelectFFM {
         public static NSTextInputContext getCurrentInputContext() {
             try {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(CLASS_PTR, sel_currentInputContext);
-                if (ms != MemorySegment.NULL) {
+                if (!MemorySegment.NULL.equals(ms)) {
                     return new NSTextInputContext(ms);
                 }
             } catch (Throwable th) {
@@ -280,11 +273,11 @@ public class MacImSelectFFM {
             if (sourceId != null && !sourceId.isEmpty()) {
                 try {
                     MemorySegment arrayPtr = Carbon.mseg_objc_msgSend(memorySegment, sel_keyboardInputSources);
-                    if (arrayPtr != MemorySegment.NULL) {
+                    if (!MemorySegment.NULL.equals(arrayPtr)) {
                         NSArray array = new NSArray(arrayPtr);
                         for (int i = 0, len = array.getLength(); i < len; ++i) {
                             MemorySegment ptr = array.getElementPtr(i);
-                            if (ptr != MemorySegment.NULL) {
+                            if (!MemorySegment.NULL.equals(ptr)) {
                                 String is = new NSString(ptr).utf8String();
                                 if (sourceId.equals(is)) {
                                     return (int) Carbon.long_objc_msgSend(memorySegment, sel_setValueForKey,
@@ -303,7 +296,7 @@ public class MacImSelectFFM {
         public String getSelectedInputSourceId() {
             try {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(memorySegment, sel_selectedKeyboardInputSource);
-                if (ms != MemorySegment.NULL) {
+                if (!MemorySegment.NULL.equals(ms)) {
                     return new NSString(ms).utf8String();
                 }
             } catch (Throwable th) {
@@ -316,7 +309,7 @@ public class MacImSelectFFM {
             List<String> list = new ArrayList<>();
             try {
                 MemorySegment ms = Carbon.mseg_objc_msgSend(memorySegment, sel_keyboardInputSources);
-                if (ms != MemorySegment.NULL) {
+                if (!MemorySegment.NULL.equals(ms)) {
                     NSArray array = new NSArray(ms);
                     for (int i = 0, len = array.getLength(); i < len; ++i) {
                         list.add(array.getStringAt(i));
@@ -353,7 +346,7 @@ public class MacImSelectFFM {
 
         public String getStringAt(int index) {
             MemorySegment ms = getElementPtr(index);
-            return ms != MemorySegment.NULL ? new NSString(ms).utf8String() : null;
+            return !MemorySegment.NULL.equals(ms) ? new NSString(ms).utf8String() : null;
         }
 
         public MemorySegment getElementPtr(int index) {
